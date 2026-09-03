@@ -8,6 +8,7 @@ await mkdir(outdir, { recursive: true });
 
 await build({
   entryPoints: {
+    background: "src/background/background.ts",
     content: "src/content/content.ts",
     "page-bridge": "src/content/page-bridge.ts",
     popup: "src/popup/popup.ts"
@@ -24,6 +25,10 @@ const sourceManifest = JSON.parse(await readFile("manifest.json", "utf8"));
 const removeDistPrefix = (path) => path.replace(/^dist\//, "");
 const distributionManifest = {
   ...sourceManifest,
+  background: {
+    ...sourceManifest.background,
+    service_worker: removeDistPrefix(sourceManifest.background.service_worker)
+  },
   action: {
     ...sourceManifest.action,
     default_popup: removeDistPrefix(sourceManifest.action.default_popup)
@@ -41,3 +46,15 @@ await Promise.all([
   cp("src/popup/popup.html", `${outdir}/popup.html`),
   cp("src/popup/popup.css", `${outdir}/popup.css`)
 ]);
+
+await mkdir("backend/dist", { recursive: true });
+await build({
+  entryPoints: ["backend/worker.ts"],
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  outfile: "backend/dist/worker.js",
+  sourcemap: true,
+  logLevel: "info"
+});

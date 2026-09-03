@@ -5,6 +5,7 @@
   "description": "Clickable English subtitles for YouTube with local vocabulary saving.",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "dev:backend": "npx wrangler@latest dev --config backend/wrangler.toml",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run build"
   },

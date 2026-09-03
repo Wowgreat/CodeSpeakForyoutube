@@ -3,8 +3,27 @@ interface ChromeStorageArea {
   set(items: Record<string, unknown>): Promise<void>;
 }
 
+interface ChromeMessageSender {
+  id?: string;
+}
+
 declare const chrome: {
   storage: {
     local: ChromeStorageArea;
+  };
+  runtime: {
+    sendMessage(message: unknown): Promise<unknown>;
+    onMessage: {
+      addListener(
+        callback: (
+          message: unknown,
+          sender: ChromeMessageSender,
+          sendResponse: (response: unknown) => void
+        ) => boolean | void
+      ): void;
+    };
+  };
+  permissions: {
+    request(permissions: { origins: string[] }): Promise<boolean>;
   };
 };

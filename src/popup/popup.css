@@ -48,8 +48,71 @@ header p {
 }
 
 main {
-  max-height: 448px;
+  max-height: 330px;
   overflow-y: auto;
+}
+
+.translation-settings {
+  padding: 12px 18px;
+  border-bottom: 1px solid #34343a;
+  background: #202024;
+}
+
+.translation-settings h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.translation-settings label {
+  display: block;
+  margin-bottom: 5px;
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.settings-row {
+  display: flex;
+  gap: 7px;
+}
+
+.settings-row input {
+  min-width: 0;
+  flex: 1;
+  padding: 7px 8px;
+  border: 1px solid #494950;
+  border-radius: 6px;
+  color: #f4f4f5;
+  background: #18181b;
+  font-size: 11px;
+}
+
+.settings-row input:focus {
+  border-color: #8ab4f8;
+  outline: 1px solid #8ab4f8;
+}
+
+.settings-row button {
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  color: #111827;
+  background: #ffe082;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-status {
+  margin: 6px 0 0;
+  color: #a1a1aa;
+  font-size: 10px;
+}
+
+.settings-status.is-success {
+  color: #86efac;
+}
+
+.settings-status.is-error {
+  color: #fca5a5;
 }
 
 .empty-state {

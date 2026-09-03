@@ -4,6 +4,14 @@
   "version": "0.1.0",
   "description": "Make English YouTube subtitles clickable and save useful words locally.",
   "permissions": ["storage"],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
   "action": {
     "default_title": "CodeSpeakForYoutube",
     "default_popup": "dist/popup.html"

@@ -5,6 +5,7 @@ import {
   type SavedWord,
   setSavedWords
 } from "../shared/types";
+import { requestTranslation } from "../shared/translation";
 
 const CAPTION_SELECTOR = ".ytp-caption-window-container .ytp-caption-segment";
 const CAPTION_CONTAINER_SELECTOR = ".ytp-caption-window-container";
@@ -35,6 +36,11 @@ interface CaptionSnapshot {
   text: string;
   rect: DOMRect;
   style: CSSStyleDeclaration;
+}
+
+interface CardTranslationState {
+  translation: string;
+  partOfSpeech: string;
 }
 
 class SubtitleEnhancer {
@@ -397,6 +403,10 @@ class SubtitleEnhancer {
     this.pauseVideoForCard();
     this.closeCard(true, false);
     const definition = getMockDefinition(word);
+    const translationState: CardTranslationState = {
+      translation: definition.translation,
+      partOfSpeech: definition.partOfSpeech
+    };
     const normalized = normalizeWord(word);
     const savedWords = await getSavedWords();
     let isSaved = savedWords.some((item) => item.normalizedWord === normalized);
@@ -419,11 +429,17 @@ class SubtitleEnhancer {
     header.append(wordElement, closeButton);
 
     const translation = document.createElement("div");
-    translation.className = "csfy-card-translation";
-    translation.textContent = definition.translation;
+    translation.className = "csfy-card-translation is-loading";
+    translation.textContent = "正在翻译…";
     const partOfSpeech = document.createElement("div");
     partOfSpeech.className = "csfy-card-pos";
     partOfSpeech.textContent = definition.partOfSpeech;
+    const phonetic = document.createElement("div");
+    phonetic.className = "csfy-card-phonetic";
+    phonetic.hidden = true;
+    const source = document.createElement("div");
+    source.className = "csfy-card-source";
+    source.textContent = "正在连接百度智能云词典";
 
     const actions = document.createElement("div");
     actions.className = "csfy-card-actions";
@@ -436,17 +452,57 @@ class SubtitleEnhancer {
     saveButton.classList.toggle("is-saved", isSaved);
     saveButton.addEventListener("click", async (event) => {
       event.stopPropagation();
-      isSaved = await this.toggleSavedWord(word, definition.translation, definition.partOfSpeech);
+      isSaved = await this.toggleSavedWord(word, translationState.translation, translationState.partOfSpeech);
       saveButton.textContent = isSaved ? "★ 已收藏" : "☆ 收藏";
       saveButton.setAttribute("aria-label", `${isSaved ? "取消收藏" : "收藏"} ${word}`);
       saveButton.classList.toggle("is-saved", isSaved);
     });
     actions.append(speakButton, saveButton);
-    card.append(header, translation, partOfSpeech, actions);
+    card.append(header, translation, phonetic, partOfSpeech, source, actions);
 
     card.addEventListener("click", (event) => event.stopPropagation());
     this.overlayRoot?.append(card);
     this.card = card;
+    this.positionCard(card, anchorRect);
+    void this.loadTranslation(word, card, translation, phonetic, partOfSpeech, source, translationState, anchorRect);
+  }
+
+  private async loadTranslation(
+    query: string,
+    card: HTMLElement,
+    translationElement: HTMLElement,
+    phoneticElement: HTMLElement,
+    partOfSpeechElement: HTMLElement,
+    sourceElement: HTMLElement,
+    state: CardTranslationState,
+    anchorRect: DOMRect
+  ): Promise<void> {
+    const fallback = getMockDefinition(query).translation;
+    const result = await requestTranslation(query);
+    if (this.card !== card || !card.isConnected) return;
+
+    translationElement.classList.remove("is-loading");
+    if (result.ok) {
+      state.translation = result.translation;
+      state.partOfSpeech = result.partOfSpeech ?? state.partOfSpeech;
+      translationElement.textContent = result.translation;
+      partOfSpeechElement.textContent = state.partOfSpeech;
+      if (result.phonetic) {
+        phoneticElement.textContent = `/${result.phonetic}/`;
+        phoneticElement.hidden = false;
+      }
+      sourceElement.textContent = result.cached ? "百度智能云词典 · 本地缓存" : "百度智能云词典";
+      sourceElement.classList.remove("is-warning");
+    } else {
+      state.translation = fallback;
+      translationElement.textContent = fallback;
+      sourceElement.textContent = result.code === "NOT_CONFIGURED"
+        ? "Mock 释义 · 请在扩展弹窗配置翻译服务"
+        : "Mock 释义 · 百度智能云翻译暂不可用";
+      sourceElement.classList.add("is-warning");
+      sourceElement.title = result.message;
+    }
+
     this.positionCard(card, anchorRect);
   }
 

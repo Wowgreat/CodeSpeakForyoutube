@@ -1,0 +1,7 @@
+name = "codespeak-translation-api"
+main = "dist/worker.js"
+compatibility_date = "2026-09-03"
+
+[vars]
+# 部署前替换为 chrome://extensions 中显示的扩展 ID。
+ALLOWED_ORIGIN = "chrome-extension://replace-with-your-extension-id"

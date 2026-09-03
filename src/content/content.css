@@ -95,10 +95,36 @@ html.csfy-captions-active .ytp-caption-window-container {
   font-size: 16px;
 }
 
+.csfy-card-translation.is-loading {
+  color: #c4c4cc;
+  animation: csfy-pulse 1.1s ease-in-out infinite alternate;
+}
+
 .csfy-card-pos {
   margin-top: 3px;
   color: #aaa;
   font-size: 12px;
+}
+
+.csfy-card-phonetic {
+  margin-top: 4px;
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+.csfy-card-source {
+  margin-top: 5px;
+  color: #71717a;
+  font-size: 10px;
+}
+
+.csfy-card-source.is-warning {
+  color: #fbbf24;
+}
+
+@keyframes csfy-pulse {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
 }
 
 .csfy-card-actions {

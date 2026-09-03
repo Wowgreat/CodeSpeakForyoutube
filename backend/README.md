@@ -1,0 +1,80 @@
+# 百度智能云机器翻译代理
+
+这个 Cloudflare Worker 代理接入用户指定的[百度智能云机器翻译](https://console.bce.baidu.com/ai-engine/machinetranslation/overview/index)，调用“文本翻译－词典版”。该接口在翻译单词和短语时可返回中文词典释义、词性、音标等字段；查询是句子时仍返回普通译文。
+
+扩展和仓库中不包含百度 API Key、Secret Key 或 Access Token。Worker 使用 API Key/Secret Key 获取有效期约 30 天的 Access Token，在运行实例内缓存并自动刷新。
+
+## 费用说明
+
+根据百度智能云当前官方文档：
+
+- 未实名认证和个人认证用户没有词典版免费测试调用量；
+- 企业认证用户可领取 1000 万字符测试资源；
+- 词典版按量后付费价格为 59 元/百万字符；
+- 成功调用才计入字符量。
+
+启用服务前请在控制台确认计费方式、资源包与余额提醒。不要仅凭“已有百度账号”假设接口免费。
+
+## 1. 准备百度智能云应用
+
+1. 打开[机器翻译控制台](https://console.bce.baidu.com/ai-engine/machinetranslation/overview/index)。
+2. 确认账号认证状态和词典版资源/计费方式。
+3. 在“应用管理”中选择专用于 CodeSpeakForYoutube 的应用，并确保它拥有“文本翻译－词典版”权限。
+4. 在应用详情中自行取得 API Key 和 Secret Key。不要将凭据粘贴到聊天、扩展源码或 Git。
+
+创建应用、开通服务或启用按量付费会改变云端账户和可能产生费用，必须由账户所有者确认并执行。
+
+## 2. 本地运行
+
+复制 `backend/.dev.vars.example` 为 `backend/.dev.vars`，只在本机填写真实值：
+
+```dotenv
+BAIDU_API_KEY=你的API_KEY
+BAIDU_SECRET_KEY=你的SECRET_KEY
+ALLOWED_ORIGIN=*
+```
+
+然后运行：
+
+```powershell
+npm run build
+npm run dev:backend
+```
+
+Wrangler 默认通常监听 `http://localhost:8787`。打开扩展 popup，将代理地址设置为：
+
+```text
+http://localhost:8787/api/translate
+```
+
+## 3. 部署到 Cloudflare
+
+1. 从 `chrome://extensions/` 取得扩展 ID，把 `backend/wrangler.toml` 中的 `ALLOWED_ORIGIN` 替换为对应的 `chrome-extension://...` 来源。
+2. 登录并以交互方式保存 Secret：
+
+```powershell
+npx wrangler@latest login
+npx wrangler@latest secret put BAIDU_API_KEY --config backend/wrangler.toml
+npx wrangler@latest secret put BAIDU_SECRET_KEY --config backend/wrangler.toml
+```
+
+3. 构建并部署：
+
+```powershell
+npm run build
+npx wrangler@latest deploy --config backend/wrangler.toml
+```
+
+4. 将 Worker URL 加上 `/api/translate`，保存到扩展 popup。
+
+## 缓存与额度保护
+
+- 扩展会在 `chrome.storage.local` 缓存最近 500 个查询，缓存有效期 30 天。
+- 建议在百度控制台开启余额提醒，并设置独立的月度费用预算。
+- 公网 Worker URL 仍可能被非浏览器客户端伪造请求；正式发布前应增加服务端限流和按月字符计数。
+
+官方文档：
+
+- [文本翻译－词典版 API](https://cloud.baidu.com/doc/MT/s/nkqrzmbpc)
+- [文本翻译－词典版价格](https://cloud.baidu.com/doc/MT/s/kkqq9xle8)
+- [Access Token 鉴权](https://ai.baidu.com/ai-doc/REFERENCE/Ck3dwjhhu)

@@ -1,0 +1,15 @@
+{
+  "name": "codespeak-for-youtube",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Clickable English subtitles for YouTube with local vocabulary saving.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9",
+    "typescript": "^5.9.2"
+  }
+}

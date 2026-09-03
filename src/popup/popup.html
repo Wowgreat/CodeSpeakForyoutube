@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CodeSpeakForYoutube 收藏</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>CodeSpeak</h1>
+        <p>我的收藏单词</p>
+      </div>
+      <span id="word-count" aria-live="polite">0</span>
+    </header>
+    <main>
+      <div id="empty-state" class="empty-state">
+        在 YouTube 英文字幕中点击单词，再点“收藏”。
+      </div>
+      <ul id="word-list" class="word-list" aria-label="收藏单词列表"></ul>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -51,6 +51,8 @@ class SubtitleEnhancer {
   private selectionFocus: HTMLElement | null = null;
   private renderDeferredWhileSelecting = false;
   private ignoreNextWordClick = false;
+  private pausedVideo: HTMLVideoElement | null = null;
+  private shouldResumeVideoOnClose = false;
 
   start(): void {
     this.createOverlay();
@@ -159,7 +161,7 @@ class SubtitleEnhancer {
   private readonly handleNavigationStart = (): void => {
     this.lastSignature = "";
     this.deactivate();
-    this.closeCard();
+    this.closeCard(false, false);
   };
 
   private readonly handleNavigationFinish = (): void => {
@@ -392,7 +394,8 @@ class SubtitleEnhancer {
   }
 
   private async openCard(word: string, anchorRect: DOMRect): Promise<void> {
-    this.closeCard(true);
+    this.pauseVideoForCard();
+    this.closeCard(true, false);
     const definition = getMockDefinition(word);
     const normalized = normalizeWord(word);
     const savedWords = await getSavedWords();
@@ -476,6 +479,28 @@ class SubtitleEnhancer {
     window.speechSynthesis.speak(utterance);
   }
 
+  private pauseVideoForCard(): void {
+    if (this.shouldResumeVideoOnClose) return;
+    const video = document.querySelector<HTMLVideoElement>("#movie_player video.html5-main-video, video.html5-main-video");
+    if (!video || video.paused || video.ended) return;
+
+    video.pause();
+    this.pausedVideo = video;
+    this.shouldResumeVideoOnClose = true;
+  }
+
+  private resumeVideoAfterCard(): void {
+    const video = this.pausedVideo;
+    const shouldResume = this.shouldResumeVideoOnClose;
+    this.pausedVideo = null;
+    this.shouldResumeVideoOnClose = false;
+
+    if (!shouldResume || !video?.isConnected || !video.paused || video.ended) return;
+    void video.play().catch(() => {
+      // Chrome may reject playback if the page loses user activation; the user can resume manually.
+    });
+  }
+
   private async toggleSavedWord(word: string, translation: string, partOfSpeech: string): Promise<boolean> {
     const normalizedWord = normalizeWord(word);
     const words = await getSavedWords();
@@ -492,10 +517,16 @@ class SubtitleEnhancer {
     return true;
   }
 
-  private closeCard(preserveRangeHighlight = false): void {
+  private closeCard(preserveRangeHighlight = false, resumePlayback = true): void {
     this.card?.remove();
     this.card = null;
     if (!preserveRangeHighlight) this.clearRangeHighlight();
+    if (resumePlayback) {
+      this.resumeVideoAfterCard();
+    } else if (!preserveRangeHighlight) {
+      this.pausedVideo = null;
+      this.shouldResumeVideoOnClose = false;
+    }
   }
 
   private deactivate(): void {

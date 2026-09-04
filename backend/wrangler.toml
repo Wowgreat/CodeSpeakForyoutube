@@ -1,7 +1,15 @@
-name = "codespeak-translation-api"
+name = "codespeakforyoutube"
 main = "dist/worker.js"
 compatibility_date = "2026-09-03"
 
 [vars]
-# 部署前替换为 chrome://extensions 中显示的扩展 ID。
-ALLOWED_ORIGIN = "chrome-extension://replace-with-your-extension-id"
+# 开发阶段需兼容不同的“加载已解压”扩展 ID。发布到 Chrome Web Store 后应改为固定扩展来源。
+ALLOWED_ORIGIN = "*"
+
+[[ratelimits]]
+name = "RATE_LIMITER"
+namespace_id = "1001"
+
+[ratelimits.simple]
+limit = 60
+period = 60

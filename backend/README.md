@@ -49,7 +49,7 @@ http://localhost:8787/api/translate
 
 ## 3. 部署到 Cloudflare
 
-1. 从 `chrome://extensions/` 取得扩展 ID，把 `backend/wrangler.toml` 中的 `ALLOWED_ORIGIN` 替换为对应的 `chrome-extension://...` 来源。
+1. 开发阶段的 `ALLOWED_ORIGIN` 为 `*`，以兼容不同机器上“加载已解压”产生的扩展 ID。发布到 Chrome Web Store 后，应改成商店分配的固定 `chrome-extension://...` 来源。
 2. 登录并以交互方式保存 Secret：
 
 ```powershell
@@ -70,6 +70,7 @@ npx wrangler@latest deploy --config backend/wrangler.toml
 ## 缓存与额度保护
 
 - 扩展会在 `chrome.storage.local` 缓存最近 500 个查询，缓存有效期 30 天。
+- Worker 对单个来源 IP 默认限制为每分钟 60 次翻译请求。
 - 建议在百度控制台开启余额提醒，并设置独立的月度费用预算。
 - 公网 Worker URL 仍可能被非浏览器客户端伪造请求；正式发布前应增加服务端限流和按月字符计数。
 

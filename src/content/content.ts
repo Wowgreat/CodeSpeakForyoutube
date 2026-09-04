@@ -71,6 +71,7 @@ class SubtitleEnhancer {
     document.addEventListener("mousedown", this.handleSelectionStart);
     document.addEventListener("mousemove", this.handleSelectionMove);
     document.addEventListener("mouseup", this.handleSelectionEnd);
+    document.addEventListener("play", this.handleVideoPlay, true);
     window.addEventListener("popstate", this.handleNavigationFinish);
     window.addEventListener("resize", this.handleViewportChange);
     window.addEventListener("scroll", this.handleViewportChange, true);
@@ -91,6 +92,7 @@ class SubtitleEnhancer {
     document.removeEventListener("mousedown", this.handleSelectionStart);
     document.removeEventListener("mousemove", this.handleSelectionMove);
     document.removeEventListener("mouseup", this.handleSelectionEnd);
+    document.removeEventListener("play", this.handleVideoPlay, true);
     window.removeEventListener("popstate", this.handleNavigationFinish);
     window.removeEventListener("resize", this.handleViewportChange);
     window.removeEventListener("scroll", this.handleViewportChange, true);
@@ -181,6 +183,14 @@ class SubtitleEnhancer {
     this.mountOverlay();
     this.lastSignature = "";
     this.scheduleRender();
+  };
+
+  private readonly handleVideoPlay = (event: Event): void => {
+    const video = event.target;
+    if (!(video instanceof HTMLVideoElement) || !this.card) return;
+    if (!video.classList.contains("html5-main-video") || !video.closest(PLAYER_SELECTOR)) return;
+
+    this.closeCard(false, false);
   };
 
   private readonly handleSelectionStart = (event: MouseEvent): void => {

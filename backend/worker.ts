@@ -2,6 +2,9 @@ interface Env {
   BAIDU_API_KEY: string;
   BAIDU_SECRET_KEY: string;
   ALLOWED_ORIGIN?: string;
+  RATE_LIMITER?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }
 
 interface TranslatePayload {
@@ -74,6 +77,13 @@ export default {
     if (!isOriginAllowed(request, env)) {
       return json({ ok: false, message: "Origin not allowed" }, 403, cors);
     }
+
+    const clientAddress = request.headers.get("CF-Connecting-IP") ?? "unknown-client";
+    const rateLimit = await env.RATE_LIMITER?.limit({ key: clientAddress });
+    if (rateLimit && !rateLimit.success) {
+      return json({ ok: false, message: "翻译请求过于频繁，请稍后再试" }, 429, cors);
+    }
+
     if (!env.BAIDU_API_KEY || !env.BAIDU_SECRET_KEY) {
       return json({ ok: false, message: "百度智能云 API Key/Secret Key 尚未配置" }, 503, cors);
     }

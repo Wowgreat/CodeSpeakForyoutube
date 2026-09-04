@@ -13,6 +13,8 @@ declare const chrome: {
   };
   runtime: {
     sendMessage(message: unknown): Promise<unknown>;
+    onInstalled: { addListener(callback: () => void): void };
+    onStartup: { addListener(callback: () => void): void };
     onMessage: {
       addListener(
         callback: (

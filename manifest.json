@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "description": "Make English YouTube subtitles clickable and save useful words locally.",
   "permissions": ["storage"],
-  "optional_host_permissions": [
-    "https://*/*",
+  "host_permissions": [
+    "https://codespeakforyoutube.1242196553.workers.dev/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],

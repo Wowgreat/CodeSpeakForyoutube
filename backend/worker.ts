@@ -5,6 +5,8 @@ interface Env {
   RATE_LIMITER?: {
     limit(options: { key: string }): Promise<{ success: boolean }>;
   };
+  GA_MEASUREMENT_ID?: string;
+  GA_API_SECRET?: string;
 }
 
 interface TranslatePayload {
@@ -56,6 +58,11 @@ interface ParsedTranslation {
   phonetic?: string;
 }
 
+interface AnalyticsRequest {
+  clientId?: unknown;
+  event?: { name?: unknown; params?: unknown };
+}
+
 const BAIDU_TOKEN_URL = "https://aip.baidubce.com/oauth/2.0/token";
 const BAIDU_DICTIONARY_URL = "https://aip.baidubce.com/rpc/2.0/mt/texttrans-with-dict/v1";
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
@@ -68,6 +75,9 @@ export default {
     const cors = createCorsHeaders(request, env);
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    if (requestUrl.pathname === "/api/analytics") {
+      return handleAnalytics(request, env, cors);
+    }
     if (requestUrl.pathname !== "/api/translate") {
       return json({ ok: false, message: "Not found" }, 404, cors);
     }
@@ -109,6 +119,42 @@ export default {
     }
   }
 };
+
+async function handleAnalytics(request: Request, env: Env, cors: Headers): Promise<Response> {
+  if (request.method !== "POST") return json({ ok: false, message: "Method not allowed" }, 405, cors);
+  if (!isOriginAllowed(request, env)) return json({ ok: false, message: "Origin not allowed" }, 403, cors);
+  if (!env.GA_MEASUREMENT_ID || !env.GA_API_SECRET) return json({ ok: true, disabled: true }, 202, cors);
+
+  let payload: AnalyticsRequest;
+  try {
+    payload = await request.json() as AnalyticsRequest;
+  } catch {
+    return json({ ok: false, message: "请求 JSON 无效" }, 400, cors);
+  }
+  const clientId = typeof payload.clientId === "string" && payload.clientId.length <= 80 ? payload.clientId : "";
+  const name = payload.event && typeof payload.event.name === "string" ? payload.event.name : "";
+  const allowedNames = new Set(["extension_installed", "extension_active", "translation_completed", "word_saved"]);
+  if (!clientId || !allowedNames.has(name)) return json({ ok: false, message: "分析事件无效" }, 400, cors);
+
+  const rawParams = payload.event?.params && typeof payload.event.params === "object" ? payload.event.params : {};
+  const params: Record<string, string | number> = {};
+  for (const [key, value] of Object.entries(rawParams)) {
+    if (!/^[a-zA-Z0-9_]{1,40}$/.test(key)) continue;
+    if (typeof value === "string" && value.length <= 100) params[key] = value;
+    else if (typeof value === "number" && Number.isFinite(value)) params[key] = value;
+    else if (typeof value === "boolean") params[key] = value ? 1 : 0;
+  }
+  const response = await fetch(
+    `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(env.GA_MEASUREMENT_ID)}&api_secret=${encodeURIComponent(env.GA_API_SECRET)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_id: clientId, events: [{ name, params }] }),
+      signal: AbortSignal.timeout(5_000)
+    }
+  ).catch(() => null);
+  return response?.ok ? json({ ok: true }, 200, cors) : json({ ok: false, message: "统计服务暂不可用" }, 502, cors);
+}
 
 async function requestBaiduTranslation(query: string, env: Env): Promise<ParsedTranslation> {
   for (let attempt = 0; attempt < 2; attempt += 1) {

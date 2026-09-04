@@ -4,6 +4,17 @@
 
 扩展和仓库中不包含百度 API Key、Secret Key 或 Access Token。Worker 使用 API Key/Secret Key 获取有效期约 30 天的 Access Token，在运行实例内缓存并自动刷新。
 
+## 匿名使用统计（可选）
+
+Worker 支持通过 Google Analytics 4 Measurement Protocol 统计匿名活跃度。未配置以下两个 Secret 时统计自动停用，不影响翻译：
+
+```powershell
+npx wrangler@latest secret put GA_MEASUREMENT_ID --config backend/wrangler.toml
+npx wrangler@latest secret put GA_API_SECRET --config backend/wrangler.toml
+```
+
+扩展只生成并保存随机安装 ID，发送事件名及成功/缓存状态；不发送字幕、单词、视频地址或账号信息。
+
 ## 费用说明
 
 根据百度智能云当前官方文档：
@@ -41,11 +52,13 @@ npm run build
 npm run dev:backend
 ```
 
-Wrangler 默认通常监听 `http://localhost:8787`。打开扩展 popup，将代理地址设置为：
+Wrangler 默认通常监听 `http://localhost:8787`。如需让扩展临时调用本地 Worker，在扩展 Service Worker 的 DevTools 控制台执行：
 
-```text
-http://localhost:8787/api/translate
+```js
+chrome.storage.local.set({ developmentTranslationApiUrl: "http://127.0.0.1:8787/api/translate" });
 ```
+
+调试完成后执行 `chrome.storage.local.remove("developmentTranslationApiUrl")`，恢复生产 Worker。
 
 ## 3. 部署到 Cloudflare
 
@@ -65,7 +78,7 @@ npm run build
 npx wrangler@latest deploy --config backend/wrangler.toml
 ```
 
-4. 将 Worker URL 加上 `/api/translate`，保存到扩展 popup。
+4. 将 Worker URL 加上 `/api/translate`，写入 `src/shared/translation.ts` 中的 `DEFAULT_TRANSLATION_API_URL` 后重新构建扩展。
 
 ## 缓存与额度保护
 

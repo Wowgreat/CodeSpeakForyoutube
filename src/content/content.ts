@@ -6,6 +6,7 @@ import {
   setSavedWords
 } from "../shared/types";
 import { requestTranslation } from "../shared/translation";
+import { trackAnalytics } from "../shared/analytics";
 
 const CAPTION_SELECTOR = ".ytp-caption-window-container .ytp-caption-segment";
 const CAPTION_CONTAINER_SELECTOR = ".ytp-caption-window-container";
@@ -506,9 +507,7 @@ class SubtitleEnhancer {
     } else {
       state.translation = fallback;
       translationElement.textContent = fallback;
-      sourceElement.textContent = result.code === "NOT_CONFIGURED"
-        ? "Mock 释义 · 请在扩展弹窗配置翻译服务"
-        : "Mock 释义 · 百度智能云翻译暂不可用";
+      sourceElement.textContent = "Mock 释义 · 百度智能云翻译暂不可用";
       sourceElement.classList.add("is-warning");
       sourceElement.title = result.message;
     }
@@ -580,6 +579,7 @@ class SubtitleEnhancer {
 
     const savedWord: SavedWord = { word, normalizedWord, translation, partOfSpeech, savedAt: Date.now() };
     await setSavedWords([savedWord, ...words]);
+    void trackAnalytics("word_saved");
     return true;
   }
 

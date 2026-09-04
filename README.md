@@ -1,6 +1,6 @@
 # CodeSpeakForYoutube
 
-CodeSpeakForYoutube 是一个 Chrome Manifest V3 扩展 MVP。它在 YouTube 普通视频的英文字幕上创建独立的可点击字幕层，通过安全代理调用百度智能云“文本翻译－词典版”，并提供中文释义、词性、音标、浏览器发音和本地单词收藏。未配置或无法连接翻译代理时会自动回退到 Mock 释义。
+CodeSpeakForYoutube 是一个 Chrome Manifest V3 扩展 MVP。它在 YouTube 普通视频的英文字幕上创建独立的可点击字幕层，通过已部署的安全代理调用百度智能云“文本翻译－词典版”，并提供中文释义、词性、音标、浏览器发音和本地单词收藏。翻译服务无法连接时会自动回退到 Mock 释义。
 
 扩展脚本会在 `youtube.com` 域内加载，以便覆盖从首页进入视频的 SPA 导航；实际字幕处理严格限制在 `/watch` 普通视频页面，`/shorts` 不会启用。
 
@@ -17,13 +17,27 @@ npm run check
 
 百度智能云 API Key/Secret Key 绝不能写入扩展。项目在 `backend/` 中提供了一个 Cloudflare Worker 代理，详细配置、费用说明与部署步骤见 [backend/README.md](backend/README.md)。
 
-代理部署后，打开扩展 popup，在“百度智能云词典翻译”中填写：
+扩展已默认使用项目部署的生产 Worker，普通用户无需配置：
 
 ```text
-https://你的-worker.workers.dev/api/translate
+https://codespeakforyoutube.1242196553.workers.dev/api/translate
 ```
 
-点击保存并批准只针对该域名的访问权限。翻译成功后卡片会显示“百度智能云词典”，并优先使用接口返回的中文词典释义、词性和音标；相同查询会在扩展本地缓存 30 天，最多保存 500 项。
+翻译成功后卡片会显示“百度智能云词典”，并优先使用接口返回的中文词典释义、词性和音标；相同查询会在扩展本地缓存 30 天，最多保存 500 项。默认 `workers.dev` 域名在部分网络环境中可能无法访问；面向 YouTube 的用户通常已使用可访问该域名的网络环境。
+
+Worker 可选接入 Google Analytics 4 统计匿名活跃度。统计只使用随机安装 ID 和功能事件，不上传字幕、单词、视频地址或账号信息；未配置 GA Secret 时自动停用。配置方法见 [backend/README.md](backend/README.md)。
+
+本地开发时，可在扩展 Service Worker 的 DevTools 控制台执行以下命令覆盖生产地址；覆盖值仅接受 `localhost` 或 `127.0.0.1`：
+
+```js
+chrome.storage.local.set({ developmentTranslationApiUrl: "http://127.0.0.1:8787/api/translate" });
+```
+
+恢复生产地址：
+
+```js
+chrome.storage.local.remove("developmentTranslationApiUrl");
+```
 
 ## 在 Chrome 安装
 
@@ -54,7 +68,7 @@ https://你的-worker.workers.dev/api/translate
 
 ## 当前限制
 
-- 真实中文译文、词性和音标优先来自百度智能云词典版；词典字段缺失时词性使用本地推测，代理未配置或不可用时中文释义回退为 Mock。
+- 真实中文译文、词性和音标优先来自百度智能云词典版；词典字段缺失时词性使用本地推测，代理不可用时中文释义回退为 Mock。
 - 当前字幕语言读取依赖 YouTube 的非公开播放器接口；接口取不到语言码时会用保守文本启发式判断，因此很短的英文字幕可能暂时不显示，某些拉丁字母语言也可能被误判。
 - YouTube 会持续调整字幕 DOM 和内部类名，未来可能需要更新选择器。
 - 独立字幕层按当前字幕片段的矩形和主要计算样式复刻；特殊字幕定位、卡拉 OK 逐字特效和极端缩放下可能与原字幕略有差异。

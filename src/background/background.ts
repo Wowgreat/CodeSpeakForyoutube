@@ -1,10 +1,18 @@
 import {
-  TRANSLATION_API_URL_KEY,
+  DEFAULT_TRANSLATION_API_URL,
+  DEVELOPMENT_TRANSLATION_API_URL_KEY,
   TRANSLATION_CACHE_KEY,
   TRANSLATION_MESSAGE_TYPE,
   type TranslationRequest,
   type TranslationResponse
 } from "../shared/translation";
+import {
+  ANALYTICS_CLIENT_ID_KEY,
+  ANALYTICS_LAST_ACTIVE_KEY,
+  ANALYTICS_MESSAGE_TYPE,
+  type AnalyticsEvent,
+  type AnalyticsEventName
+} from "../shared/analytics";
 
 interface TranslationMessage {
   type: typeof TRANSLATION_MESSAGE_TYPE;
@@ -29,6 +37,11 @@ const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_CACHE_ENTRIES = 500;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (isAnalyticsMessage(message)) {
+    void sendAnalytics(message.payload);
+    sendResponse({ ok: true });
+    return false;
+  }
   if (!isTranslationMessage(message)) return;
 
   void translate(message.payload.query)
@@ -37,6 +50,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ ok: false, code: "NETWORK_ERROR", message: "扩展后台翻译失败" } satisfies TranslationResponse);
     });
   return true;
+});
+
+chrome.runtime.onInstalled.addListener(() => {
+  void sendAnalytics({ name: "extension_installed" });
+  void markActiveAndTrack();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  void markActiveAndTrack();
 });
 
 async function translate(rawQuery: string): Promise<TranslationResponse> {
@@ -48,7 +70,7 @@ async function translate(rawQuery: string): Promise<TranslationResponse> {
   const cacheKey = query.toLocaleLowerCase("en-US");
   const cached = await readCachedTranslation(cacheKey);
   if (cached) {
-    return {
+    const result: TranslationResponse = {
       ok: true,
       translation: cached.translation,
       ...(cached.partOfSpeech ? { partOfSpeech: cached.partOfSpeech } : {}),
@@ -56,17 +78,11 @@ async function translate(rawQuery: string): Promise<TranslationResponse> {
       provider: "baidu-bce",
       cached: true
     };
+    void sendAnalytics({ name: "translation_completed", params: { success: true, cached: true } });
+    return result;
   }
 
-  const settings = await chrome.storage.local.get(TRANSLATION_API_URL_KEY);
-  const endpoint = settings[TRANSLATION_API_URL_KEY];
-  if (typeof endpoint !== "string" || !isAllowedEndpoint(endpoint)) {
-    return {
-      ok: false,
-      code: "NOT_CONFIGURED",
-      message: "请在扩展弹窗中配置百度智能云翻译代理地址"
-    };
-  }
+  const endpoint = await getTranslationEndpoint();
 
   try {
     const response = await fetch(endpoint, {
@@ -93,7 +109,7 @@ async function translate(rawQuery: string): Promise<TranslationResponse> {
       ...(partOfSpeech ? { partOfSpeech } : {}),
       ...(phonetic ? { phonetic } : {})
     });
-    return {
+    const result: TranslationResponse = {
       ok: true,
       translation,
       ...(partOfSpeech ? { partOfSpeech } : {}),
@@ -101,9 +117,53 @@ async function translate(rawQuery: string): Promise<TranslationResponse> {
       provider: "baidu-bce",
       cached: false
     };
+    void sendAnalytics({ name: "translation_completed", params: { success: true, cached: false } });
+    return result;
   } catch {
+    void sendAnalytics({ name: "translation_completed", params: { success: false, cached: false } });
     return { ok: false, code: "NETWORK_ERROR", message: "百度智能云翻译代理连接超时或不可用" };
   }
+}
+
+interface AnalyticsMessage {
+  type: typeof ANALYTICS_MESSAGE_TYPE;
+  payload: AnalyticsEvent;
+}
+
+async function getTranslationEndpoint(): Promise<string> {
+  const settings = await chrome.storage.local.get(DEVELOPMENT_TRANSLATION_API_URL_KEY);
+  const override = settings[DEVELOPMENT_TRANSLATION_API_URL_KEY];
+  return typeof override === "string" && isLocalDevelopmentEndpoint(override)
+    ? override
+    : DEFAULT_TRANSLATION_API_URL;
+}
+
+async function markActiveAndTrack(): Promise<void> {
+  const today = new Date().toISOString().slice(0, 10);
+  const result = await chrome.storage.local.get(ANALYTICS_LAST_ACTIVE_KEY);
+  if (result[ANALYTICS_LAST_ACTIVE_KEY] === today) return;
+  await chrome.storage.local.set({ [ANALYTICS_LAST_ACTIVE_KEY]: today });
+  await sendAnalytics({ name: "extension_active" });
+}
+
+async function sendAnalytics(event: AnalyticsEvent): Promise<void> {
+  const clientId = await getAnalyticsClientId();
+  await fetch(DEFAULT_TRANSLATION_API_URL.replace("/api/translate", "/api/analytics"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clientId, event }),
+    signal: AbortSignal.timeout(5_000)
+  }).catch(() => undefined);
+}
+
+async function getAnalyticsClientId(): Promise<string> {
+  const result = await chrome.storage.local.get(ANALYTICS_CLIENT_ID_KEY);
+  if (typeof result[ANALYTICS_CLIENT_ID_KEY] === "string" && result[ANALYTICS_CLIENT_ID_KEY]) {
+    return result[ANALYTICS_CLIENT_ID_KEY] as string;
+  }
+  const clientId = crypto.randomUUID();
+  await chrome.storage.local.set({ [ANALYTICS_CLIENT_ID_KEY]: clientId });
+  return clientId;
 }
 
 async function readCachedTranslation(key: string): Promise<CachedTranslation | null> {
@@ -146,14 +206,26 @@ function isTranslationMessage(value: unknown): value is TranslationMessage {
   return candidate.type === TRANSLATION_MESSAGE_TYPE && typeof candidate.payload?.query === "string";
 }
 
-function isAllowedEndpoint(value: string): boolean {
+function isLocalDevelopmentEndpoint(value: string): boolean {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" ||
-      (url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1"));
+    return url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1");
   } catch {
     return false;
   }
+}
+
+function isAnalyticsMessage(value: unknown): value is AnalyticsMessage {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<AnalyticsMessage>;
+  return candidate.type === ANALYTICS_MESSAGE_TYPE &&
+    Boolean(candidate.payload && isAnalyticsEventName(candidate.payload.name));
+}
+
+function isAnalyticsEventName(value: unknown): value is AnalyticsEventName {
+  return value === "extension_installed" || value === "extension_active" ||
+    value === "translation_completed" || value === "word_saved";
 }
 
 function isBackendSuccess(value: unknown): value is BackendSuccess {

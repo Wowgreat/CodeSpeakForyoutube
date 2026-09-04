@@ -1,4 +1,6 @@
-export const TRANSLATION_API_URL_KEY = "translationApiUrl";
+export const DEFAULT_TRANSLATION_API_URL =
+  "https://codespeakforyoutube.1242196553.workers.dev/api/translate";
+export const DEVELOPMENT_TRANSLATION_API_URL_KEY = "developmentTranslationApiUrl";
 export const TRANSLATION_CACHE_KEY = "translationCache";
 export const TRANSLATION_MESSAGE_TYPE = "CSFY_TRANSLATE";
 
@@ -17,7 +19,7 @@ export interface TranslationSuccess {
 
 export interface TranslationFailure {
   ok: false;
-  code: "NOT_CONFIGURED" | "INVALID_REQUEST" | "NETWORK_ERROR" | "PROVIDER_ERROR";
+  code: "INVALID_REQUEST" | "NETWORK_ERROR" | "PROVIDER_ERROR";
   message: string;
 }
 

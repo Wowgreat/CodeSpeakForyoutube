@@ -27,6 +27,12 @@ https://codespeakforyoutube.1242196553.workers.dev/api/translate
 
 Worker 可选接入 Google Analytics 4 统计匿名活跃度。统计只使用随机安装 ID 和功能事件，不上传字幕、单词、视频地址或账号信息；未配置 GA Secret 时自动停用。配置方法见 [backend/README.md](backend/README.md)。
 
+隐私政策见 [PRIVACY.md](PRIVACY.md)。上架 Chrome Web Store 时，可将其公开 GitHub 地址填写为隐私权政策网址：
+
+```text
+https://github.com/Wowgreat/CodeSpeakForyoutube/blob/main/PRIVACY.md
+```
+
 本地开发时，可在扩展 Service Worker 的 DevTools 控制台执行以下命令覆盖生产地址；覆盖值仅接受 `localhost` 或 `127.0.0.1`：
 
 ```js

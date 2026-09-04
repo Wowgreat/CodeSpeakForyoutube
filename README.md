@@ -53,6 +53,12 @@ chrome.storage.local.remove("developmentTranslationApiUrl");
 4. 选择项目根目录 `C:\code\CodeSpeakForYoutube`。也可以选择其中的 `dist` 目录，两种方式都受支持。
 5. 建议将 CodeSpeakForYoutube 固定到工具栏，方便查看收藏。
 
+## 从 GitHub Releases 安装
+
+如果暂时不通过 Chrome Web Store，可从 [Releases](https://github.com/Wowgreat/CodeSpeakForyoutube/releases) 下载 ZIP。解压到本地目录后，在 `chrome://extensions/` 开启“开发者模式”，点击“加载已解压的扩展程序”，选择解压后的目录（其中应包含 `manifest.json`）。
+
+开发者模式下安装的扩展不会自动更新；发布新版本后需要重新下载、解压并在扩展管理页点击“重新加载”。
+
 ## 手动验收
 
 1. 打开一个带人工英文字幕或英文自动字幕的普通 YouTube 视频（URL 应为 `/watch?v=...`，不要使用 Shorts）。
